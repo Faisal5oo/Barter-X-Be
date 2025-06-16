@@ -78,6 +78,57 @@ const userSchema = new mongoose.Schema({
     type: [notificationSchema],
     default: [],
   },
+
+  // AI Recommendation fields
+  favoriteCategories: {
+    type: [String],
+    default: [],
+  },
+
+  interests: {
+    type: [String],
+    default: [],
+  },
+
+  searchPreferences: {
+    preferredLocations: {
+      type: [String],
+      default: [],
+    },
+    priceRange: {
+      min: { type: Number, default: 0 },
+      max: { type: Number, default: 10000 }
+    },
+    preferFreeItems: { type: Boolean, default: false }
+  },
+
+  // User Preferences for AI recommendations
+  preferences: {
+    categories: {
+      type: [String],
+      default: []
+    },
+    conditions: {
+      type: [String],
+      default: []
+    },
+    priceRange: {
+      min: { type: Number, default: 0 },
+      max: { type: Number, default: 1000000 }
+    },
+    brands: {
+      type: [String],
+      default: []
+    },
+    locations: {
+      type: [String],
+      default: []
+    },
+    freeOnly: {
+      type: Boolean,
+      default: false
+    }
+  },
 }, {
   timestamps: true,
 });

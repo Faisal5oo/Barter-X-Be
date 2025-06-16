@@ -42,7 +42,8 @@ exports.getAllProducts = async (req, res) => {
       canShip,
       sortBy = 'createdAt',
       minValue,
-      maxValue
+      maxValue,
+      isFree
     } = req.query;
 
     const filter = { isActive: true, isApproved: true };
@@ -52,6 +53,8 @@ exports.getAllProducts = async (req, res) => {
     if (condition) filter.condition = condition;
     if (cashOption !== undefined) filter['exchangePreferences.cashOption'] = cashOption === 'true';
     if (canShip !== undefined) filter['shippingOptions.canShip'] = canShip === 'true';
+    if (isFree !== undefined) filter.isFree = isFree === 'true';
+    
     if (minValue || maxValue) {
       filter['exchangePreferences.estimatedValue'] = {};
       if (minValue) filter['exchangePreferences.estimatedValue'].$gte = Number(minValue);
@@ -603,5 +606,118 @@ exports.fixProductCoordinates = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: "Failed to fix product coordinates", error: err.message });
+  }
+};
+
+exports.getFreeProducts = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      category,
+      location,
+      search,
+      sortBy = 'newest'
+    } = req.query;
+
+    const filter = { 
+      isActive: true, 
+      isApproved: true,
+      isFree: true // Only free products
+    };
+    
+    if (category) filter.category = category;
+    if (location) filter.location = { $regex: location, $options: 'i' };
+    if (search) {
+      filter.$text = { $search: search };
+    }
+
+    const sortOptions = {};
+    switch (sortBy) {
+      case 'newest':
+        sortOptions.createdAt = -1;
+        break;
+      case 'oldest':
+        sortOptions.createdAt = 1;
+        break;
+      case 'views':
+        sortOptions.views = -1;
+        break;
+      default:
+        sortOptions.createdAt = -1;
+    }
+
+    const skip = (page - 1) * limit;
+    
+    const products = await Product.find(filter)
+      .populate("listedBy", "name email")
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await Product.countDocuments(filter);
+    
+    res.status(200).json({
+      products,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / limit),
+        totalProducts: total,
+        hasNext: page * limit < total,
+        hasPrev: page > 1
+      },
+      category: 'free',
+      message: `${total} free items available for pickup`
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch free products", error: err.message });
+  }
+};
+
+exports.getProductPricingInfo = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const exchangePreferences = product.exchangePreferences || {};
+    const pricingInfo = exchangePreferences.pricingInfo || {};
+
+    res.status(200).json({
+      productId: product._id,
+      title: product.title,
+      acceptCashOffers: exchangePreferences.acceptCashOffers || false,
+      pricingInfo: {
+        minPrice: pricingInfo.minPrice || 0,
+        maxPrice: pricingInfo.maxPrice || 0,
+        fixedPrice: pricingInfo.fixedPrice || 0,
+        currency: pricingInfo.currency || 'PKR'
+      },
+      allowedOfferTypes: exchangePreferences.acceptCashOffers 
+        ? ['barter', 'barter-plus-cash', 'cash-only']
+        : ['barter']
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to get pricing info", error: err.message });
+  }
+};
+
+exports.checkFavoriteStatus = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const isFavorited = product.favorites.includes(req.user.id);
+    
+    res.status(200).json({
+      productId: req.params.id,
+      isFavorited,
+      totalFavorites: product.favorites.length
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to check favorite status", error: err.message });
   }
 };

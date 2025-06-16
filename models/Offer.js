@@ -14,13 +14,31 @@ const offerSchema = new mongoose.Schema({
   offeredProduct: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
-    required: true
+    required: function() { return this.offerType !== 'cash-only'; }
   },
   requestedProduct: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Product',
     required: true
   },
+  
+  // Offer Type and Cash Information
+  offerType: {
+    type: String,
+    enum: ['barter', 'barter-plus-cash', 'cash-only'],
+    required: true,
+    default: 'barter'
+  },
+  cashAmount: {
+    type: Number,
+    required: function() { return this.offerType === 'barter-plus-cash' || this.offerType === 'cash-only'; },
+    default: 0
+  },
+  currency: {
+    type: String,
+    default: 'PKR'
+  },
+  
   message: {
     type: String,
     required: true
@@ -42,5 +60,6 @@ const offerSchema = new mongoose.Schema({
 offerSchema.index({ offeredBy: 1 });
 offerSchema.index({ offeredTo: 1 });
 offerSchema.index({ status: 1 });
+offerSchema.index({ offerType: 1 });
 
 module.exports = mongoose.model('Offer', offerSchema);
