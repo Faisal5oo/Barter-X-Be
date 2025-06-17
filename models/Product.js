@@ -74,8 +74,7 @@ const productSchema = new mongoose.Schema({
   specs: {
     brand: { type: String },
     model: { 
-      type: String,
-      required: function() { return this.category !== 'food'; }
+      type: String
     },
     year: { type: String },
     size: { type: String },
@@ -116,6 +115,37 @@ const productSchema = new mongoose.Schema({
     estimatedValue: { type: Number },
     notes: { type: String },
     
+    // Offers received for this product
+    offers: [{
+      offeredProductId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+        required: true
+      },
+      offeredProductName: {
+        type: String,
+        required: true
+      },
+      offeredProductImage: {
+        type: String,
+        required: true
+      },
+      offerStatus: {
+        type: String,
+        enum: ['pending', 'accepted', 'rejected'],
+        default: 'pending'
+      },
+      offeredBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+      },
+      offerDate: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    
     // Cash offer settings
     acceptCashOffers: { type: Boolean, default: false },
     pricingInfo: {
@@ -155,7 +185,7 @@ const productSchema = new mongoose.Schema({
     userImage: { type: String },
     rating: {
       type: Number,
-      required: true,
+      required: false,
       min: 1,
       max: 5
     },
